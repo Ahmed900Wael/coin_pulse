@@ -2,6 +2,12 @@ import { clsx, type ClassValue } from "clsx";
 import { Time } from "lightweight-charts";
 import { twMerge } from "tailwind-merge";
 
+/**
+ * Combines multiple class value inputs into a single class string with Tailwind class merging.
+ *
+ * @param inputs - One or more class values (strings, arrays, objects, etc.) to be combined
+ * @returns A single className string with Tailwind classes merged and duplicates/conflicts resolved
+ */
 export function cn(...inputs: ClassValue[]) {
     return twMerge(clsx(inputs));
 }
@@ -48,6 +54,23 @@ export function trendingClasses(value: number) {
     };
 }
 
+/**
+ * Produces a human-readable relative time string for the given date.
+ *
+ * Accepts a Date, timestamp, or date string and returns a short relative description
+ * such as "just now", "5 min", "2 hours", "3 days", "1 week", or a calendar date.
+ *
+ * @param date - The date to compare against the current time (Date, timestamp, or ISO/string).
+ * @returns A relative time string:
+ * - `"just now"` for < 60 seconds
+ * - `"<n> min"` for minutes
+ * - `"<n> hour(s)"` for hours
+ * - `"<n> day(s)"` for days
+ * - `"<n> week(s)"` for weeks (< 4 weeks)
+ * - `"in the future"` if the date is after now
+ * - `""` if the input is invalid
+ * - otherwise the date formatted as `YYYY-MM-DD`
+ */
 export function timeAgo(date: string | number | Date): string {
     const now = new Date();
     const past = new Date(date);
@@ -78,6 +101,12 @@ export function timeAgo(date: string | number | Date): string {
     return past.toISOString().split("T")[0];
 }
 
+/**
+ * Convert an array of OHLC tuples into objects compatible with lightweight-charts and remove consecutive entries that share the same time.
+ *
+ * @param data - Array of OHLC tuples in the shape `[time, open, high, low, close]` where `time` is in seconds.
+ * @returns An array of objects each with `time: Time`, `open`, `high`, `low`, and `close`; consecutive entries with identical `time` values are deduplicated by keeping the first occurrence.
+ */
 export function convertOHLCData(data: OHLCData[]) {
     return data
         .map((d) => ({
