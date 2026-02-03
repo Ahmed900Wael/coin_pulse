@@ -1,10 +1,19 @@
 "use client";
 
-import { getCandlestickConfig, getChartConfig, PERIOD_BUTTONS, PERIOD_CONFIG } from "@/constants";
+import {
+    getCandlestickConfig,
+    getChartConfig,
+    PERIOD_BUTTONS,
+    PERIOD_CONFIG,
+} from "@/constants";
 import { useEffect, useRef, useState, useTransition } from "react";
-import { CandlestickSeries, createChart, IChartApi, ISeriesApi } from "lightweight-charts";
 import { fetcher } from "@/lib/coingecko.actions";
 import { convertOHLCData } from "@/lib/utils";
+
+// Types for lightweight-charts (client-side only)
+type IChartApi = any;
+type ISeriesApi<T> = any;
+type CandlestickSeries = "Candlestick";
 
 const CandlestickChart = ({
     children,
@@ -22,8 +31,9 @@ const CandlestickChart = ({
     const [ohlcData, setOhlcData] = useState<OHLCData[]>(data ?? []);
     const [isPending, startTransition] = useTransition();
 
-    const fetchOHLCData = async (selectedPeriod: Period) => {
+    const fetchOHLCData = async (selectedPeriod: Period): Promise<boolean> => {
         try {
+            setLoading(true);
             const { days } = PERIOD_CONFIG[selectedPeriod];
 
             const newData = await fetcher<OHLCData[]>(`/coins/${coinId}/ohlc`, {
@@ -33,8 +43,12 @@ const CandlestickChart = ({
             });
 
             setOhlcData(newData ?? []);
+            return true;
         } catch (error) {
             console.error("Error fetching OHLC data:", error);
+            return false;
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -42,8 +56,10 @@ const CandlestickChart = ({
         if (newPeriod === period) return;
 
         startTransition(async () => {
-            setPeriod(newPeriod);
-            await fetchOHLCData(newPeriod);
+            const success = await fetchOHLCData(newPeriod);
+            if (success) {
+                setPeriod(newPeriod);
+            }
         });
     };
 
@@ -51,43 +67,68 @@ const CandlestickChart = ({
         const container = chartContainerRef.current;
         if (!container) return;
 
-        const showTime = ["daily", "weekly", "monthly"].includes(period);
-        const chart = createChart(container, {
-            ...getChartConfig(height, showTime),
-            width: container.clientWidth,
-        });
-        const series = chart.addSeries(CandlestickSeries, getCandlestickConfig());
+        const initChart = async () => {
+            const { createChart, CandlestickSeries } =
+                await import("lightweight-charts");
 
-        series.setData(convertOHLCData(ohlcData));
-        chart.timeScale().fitContent();
+            const showTime = ["daily", "weekly", "monthly"].includes(period);
+            const chart = createChart(container, {
+                ...getChartConfig(height, showTime),
+                width: container.clientWidth,
+            });
+            const series = chart.addSeries(
+                CandlestickSeries,
+                getCandlestickConfig()
+            );
 
-        chartRef.current = chart;
-        candleSeriesRef.current = series;
+            series.setData(convertOHLCData(ohlcData));
+            chart.timeScale().fitContent();
 
-        const observer = new ResizeObserver((entries) => {
-            if (!entries.length) return;
-            chart.applyOptions({ width: entries[0].contentRect.width });
-        });
+            chartRef.current = chart;
+            candleSeriesRef.current = series;
 
-        observer.observe(container);
+            const observer = new ResizeObserver((entries) => {
+                if (!entries.length) return;
+                chart.applyOptions({ width: entries[0].contentRect.width });
+            });
 
+            observer.observe(container);
+
+            return () => {
+                observer.disconnect();
+                chart.remove();
+                chartRef.current = null;
+                candleSeriesRef.current = null;
+            };
+        };
+
+        const cleanup = initChart();
         return () => {
-            observer.disconnect();
-            chart.remove();
-            chartRef.current = null;
-            candleSeriesRef.current = null;
+            cleanup.then((cleanupFn) => cleanupFn?.());
         };
     }, [height]);
 
     useEffect(() => {
+        if (!chartRef.current) return;
+        const showTime = ["daily", "weekly", "monthly"].includes(period);
+        chartRef.current.timeScale().applyOptions({
+            timeVisible: showTime,
+            secondsVisible: false,
+        });
+    }, [period]);
+
+    useEffect(() => {
         if (!candleSeriesRef.current) return;
-        const convertedToSeconds = ohlcData.map(item => [
-            Math.floor(item[0] / 1000),
-            item[1],
-            item[2],
-            item[3],
-            item[4],
-        ] as OHLCData);
+        const convertedToSeconds = ohlcData.map(
+            (item) =>
+                [
+                    Math.floor(item[0] / 1000),
+                    item[1],
+                    item[2],
+                    item[3],
+                    item[4],
+                ] as OHLCData
+        );
 
         const converted = convertOHLCData(convertedToSeconds);
         candleSeriesRef.current.setData(converted);
