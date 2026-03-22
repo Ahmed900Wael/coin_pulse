@@ -46,3 +46,44 @@ export async function fetcher<T>(
 
     return await response.json();
 }
+
+export async function getPools(
+    id: string,
+    network?: string | null,
+    contractAddress?: string | null
+): Promise<PoolData> {
+    const fallback: PoolData = {
+        id: "",
+        address: "",
+        name: "",
+        network: "",
+    };
+
+    if (network && contractAddress) {
+        try {
+            const poolData = await fetcher<{ data: PoolData[] }>(
+                `/onchain/networks/${network}/tokens/${contractAddress}/pools`
+            );
+
+            return poolData.data?.[0] ?? fallback;
+        } catch (error) {
+            console.error("getPools: fetch fallback failed", error, {
+                id,
+                fallback,
+            });
+            return fallback;
+        }
+    }
+
+    try {
+        const poolData = await fetcher<{ data: PoolData[] }>(
+            "/onchain/search/pools",
+            { query: id }
+        );
+
+        return poolData.data?.[0] ?? fallback;
+    } catch (error) {
+        console.error("getPools: pool lookup failed", error, { id });
+        return fallback;
+    }
+}

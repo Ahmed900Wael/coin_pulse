@@ -3,6 +3,7 @@
 import {
     getCandlestickConfig,
     getChartConfig,
+    LIVE_INTERVAL_BUTTONS,
     PERIOD_BUTTONS,
     PERIOD_CONFIG,
 } from "@/constants";
@@ -21,17 +22,25 @@ const CandlestickChart = ({
     coinId,
     height = 360,
     initialPeriod = "daily",
+    liveOhlcv = null,
+    mode = "historical",
+    liveInterval,
+    setLiveInterval,
 }: CandlestickChartProps) => {
     const chartContainerRef = useRef<HTMLDivElement | null>(null);
     const chartRef = useRef<IChartApi | null>(null);
     const candleSeriesRef = useRef<ISeriesApi<"Candlestick"> | null>(null);
+    const prevOhlcDatLength = useRef<number>(data?.length || 0);
 
     const [loading, setLoading] = useState(false);
     const [period, setPeriod] = useState<Period>(initialPeriod);
     const [ohlcData, setOhlcData] = useState<OHLCData[]>(data ?? []);
     const [isPending, startTransition] = useTransition();
 
-    const fetchOHLCData = async (selectedPeriod: Period): Promise<boolean> => {
+    const fetchOHLCData = async (selectedPeriod: Period) => {
+        const requestId = Date.now();
+        fetchOHLCData.requestId = requestId;
+
         try {
             setLoading(true);
             const { days } = PERIOD_CONFIG[selectedPeriod];
@@ -42,25 +51,28 @@ const CandlestickChart = ({
                 precision: "full",
             });
 
-            setOhlcData(newData ?? []);
-            return true;
+            if (fetchOHLCData.requestId !== requestId) return;
+
+            startTransition(() => {
+                setOhlcData(newData ?? []);
+            });
         } catch (error) {
-            console.error("Error fetching OHLC data:", error);
-            return false;
+            if (fetchOHLCData.requestId === requestId) {
+                console.error("Error fetching OHLC data:", error);
+            }
         } finally {
-            setLoading(false);
+            if (fetchOHLCData.requestId === requestId) {
+                setLoading(false);
+            }
         }
     };
+    fetchOHLCData.requestId = 0;
 
     const handlePeriodChange = (newPeriod: Period) => {
         if (newPeriod === period) return;
 
-        startTransition(async () => {
-            const success = await fetchOHLCData(newPeriod);
-            if (success) {
-                setPeriod(newPeriod);
-            }
-        });
+        setPeriod(newPeriod);
+        fetchOHLCData(newPeriod);
     };
 
     useEffect(() => {
@@ -81,7 +93,18 @@ const CandlestickChart = ({
                 getCandlestickConfig()
             );
 
-            series.setData(convertOHLCData(ohlcData));
+            const convertedToSeconds = ohlcData.map(
+                (item) =>
+                    [
+                        Math.floor(item[0] / 1000),
+                        item[1],
+                        item[2],
+                        item[3],
+                        item[4],
+                    ] as OHLCData
+            );
+
+            series.setData(convertOHLCData(convertedToSeconds));
             chart.timeScale().fitContent();
 
             chartRef.current = chart;
@@ -130,10 +153,39 @@ const CandlestickChart = ({
                 ] as OHLCData
         );
 
-        const converted = convertOHLCData(convertedToSeconds);
+        let merged: OHLCData[];
+
+        if (liveOhlcv) {
+            const liveTimestamp = liveOhlcv[0];
+
+            const lastHistoricalCandle =
+                convertedToSeconds[convertedToSeconds.length - 1];
+
+            if (
+                lastHistoricalCandle &&
+                lastHistoricalCandle[0] === liveTimestamp
+            ) {
+                // Replace the last historical candle with the live one
+                merged = [...convertedToSeconds.slice(0, -1), liveOhlcv];
+            } else {
+                // Add the live candle to the end
+                merged = [...convertedToSeconds, liveOhlcv];
+            }
+        } else {
+            merged = convertedToSeconds;
+        }
+
+        merged.sort((a, b) => a[0] - b[0]);
+
+        const converted = convertOHLCData(merged);
         candleSeriesRef.current.setData(converted);
-        chartRef.current?.timeScale().fitContent();
-    }, [ohlcData, period]);
+
+        const dataChanged = prevOhlcDatLength.current !== ohlcData.length;
+        if (dataChanged || mode === "historical") {
+            chartRef.current?.timeScale().fitContent();
+            prevOhlcDatLength.current = ohlcData.length;
+        }
+    }, [ohlcData, period, liveOhlcv, mode]);
 
     return (
         <div id="candlestick-chart">
@@ -154,13 +206,40 @@ const CandlestickChart = ({
                                         : "config-button"
                                 }
                                 onClick={() => handlePeriodChange(value)}
-                                disabled={loading}
+                                disabled={isPending}
                             >
                                 {label}
                             </button>
                         );
                     })}
                 </div>
+
+                {liveInterval && mode === "live" && (
+                    <div className="button-group">
+                        <span className="text-sm mx-2 font-medium text-purple-100/50">
+                            Update Frequency:
+                        </span>
+                        {LIVE_INTERVAL_BUTTONS.map(({ value, label }) => {
+                            return (
+                                <button
+                                    key={value}
+                                    className={
+                                        liveInterval === value
+                                            ? "config-button-active"
+                                            : "config-button"
+                                    }
+                                    onClick={() =>
+                                        setLiveInterval &&
+                                        setLiveInterval(value)
+                                    }
+                                    disabled={isPending}
+                                >
+                                    {label}
+                                </button>
+                            );
+                        })}
+                    </div>
+                )}
             </div>
 
             <div ref={chartContainerRef} className="chart" style={{ height }} />
