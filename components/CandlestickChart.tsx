@@ -13,7 +13,7 @@ import { convertOHLCData } from "@/lib/utils";
 // Types for lightweight-charts (client-side only)
 type IChartApi = any;
 type ISeriesApi<T> = any;
-type CandlestickSeries = "Candlestick";
+// type CandlestickSeries = "Candlestick";
 
 const CandlestickChart = ({
     children,
