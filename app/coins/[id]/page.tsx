@@ -89,11 +89,15 @@ const Page = async ({ params }: NextPageProps) => {
                         {coinDetails.map(
                             ({ label, value, link, linkText }, index) => (
                                 <li key={index}>
-                                    <p className={label}>{label}</p>
+                                    <p className="label">{label}</p>
 
                                     {link ? (
                                         <div className="link">
-                                            <Link href={link} target="_blank">
+                                            <Link
+                                                href={link}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                            >
                                                 {linkText || label}
                                             </Link>
                                             <ArrowUpRight size={16} />

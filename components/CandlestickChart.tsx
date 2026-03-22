@@ -38,6 +38,9 @@ const CandlestickChart = ({
     const [isPending, startTransition] = useTransition();
 
     const fetchOHLCData = async (selectedPeriod: Period) => {
+        const requestId = Date.now();
+        fetchOHLCData.requestId = requestId;
+
         try {
             setLoading(true);
             const { days } = PERIOD_CONFIG[selectedPeriod];
@@ -48,15 +51,22 @@ const CandlestickChart = ({
                 precision: "full",
             });
 
+            if (fetchOHLCData.requestId !== requestId) return;
+
             startTransition(() => {
                 setOhlcData(newData ?? []);
             });
         } catch (error) {
-            console.error("Error fetching OHLC data:", error);
+            if (fetchOHLCData.requestId === requestId) {
+                console.error("Error fetching OHLC data:", error);
+            }
         } finally {
-            setLoading(false);
+            if (fetchOHLCData.requestId === requestId) {
+                setLoading(false);
+            }
         }
     };
+    fetchOHLCData.requestId = 0;
 
     const handlePeriodChange = (newPeriod: Period) => {
         if (newPeriod === period) return;
@@ -169,10 +179,9 @@ const CandlestickChart = ({
 
         const converted = convertOHLCData(merged);
         candleSeriesRef.current.setData(converted);
-        chartRef.current?.timeScale().fitContent();
 
         const dataChanged = prevOhlcDatLength.current !== ohlcData.length;
-        if (dataChanged || mode == "historical") {
+        if (dataChanged || mode === "historical") {
             chartRef.current?.timeScale().fitContent();
             prevOhlcDatLength.current = ohlcData.length;
         }
@@ -219,7 +228,10 @@ const CandlestickChart = ({
                                             ? "config-button-active"
                                             : "config-button"
                                     }
-                                    onClick={() => setInterval && setInterval(value)}
+                                    onClick={() =>
+                                        setLiveInterval &&
+                                        setLiveInterval(value)
+                                    }
                                     disabled={isPending}
                                 >
                                     {label}

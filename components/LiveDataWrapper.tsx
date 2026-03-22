@@ -71,7 +71,7 @@ const LiveDataWrapper = ({
                 }
                 livePriceChangePercentage24h={
                     price?.change24h ??
-                    coin.market_data?.price_change_percentage_30d_in_currency
+                    coin.market_data?.price_change_percentage_24h_in_currency
                         ?.usd ??
                     0
                 }
@@ -100,7 +100,7 @@ const LiveDataWrapper = ({
 
             <Separator className="divider" />
 
-            {tradeColumns && (
+            {trades?.length > 0 && (
                 <div className="trades">
                     <h4>Recent Trades</h4>
 

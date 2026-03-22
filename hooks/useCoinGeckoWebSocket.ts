@@ -123,17 +123,15 @@ export const useCoinGeckoWebSocket = ({
             }
         };
 
-        queueMicrotask(() => {
-            setPrice(null);
-            setTrades([]);
-            setOhlcv(null);
+        setPrice(null);
+        setTrades([]);
+        setOhlcv(null);
 
-            unsubscribeAll();
+        unsubscribeAll();
 
-            subscribe("CGSimplePrice", {
-                coin_id: [coinId],
-                action: "set_tokens",
-            });
+        subscribe("CGSimplePrice", {
+            coin_id: [coinId],
+            action: "set_tokens",
         });
 
         const poolAddress = poolId.replace("_", ":") ?? "";

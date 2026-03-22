@@ -67,7 +67,10 @@ export async function getPools(
 
             return poolData.data?.[0] ?? fallback;
         } catch (error) {
-            console.log(error);
+            console.error("getPools: fetch fallback failed", error, {
+                id,
+                fallback,
+            });
             return fallback;
         }
     }
@@ -79,7 +82,8 @@ export async function getPools(
         );
 
         return poolData.data?.[0] ?? fallback;
-    } catch {
+    } catch (error) {
+        console.error("getPools: pool lookup failed", error, { id });
         return fallback;
     }
 }
