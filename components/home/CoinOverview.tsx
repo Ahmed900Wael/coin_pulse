@@ -11,7 +11,7 @@ const CoinOverview = () => {
     const [coin, setCoin] = useState<CoinDetailsData | null>(null);
     const [coinOHLCData, setCoinOHLCData] = useState<OHLCData[] | null>(null);
     const [loading, setLoading] = useState(true);
-    const [liveInterval, setLiveInterval] = useState<"1s" | "1m">("1m");
+    const [fetchError, setFetchError] = useState(false);
 
     useEffect(() => {
         const fetchData = async () => {
@@ -30,6 +30,7 @@ const CoinOverview = () => {
                 setCoinOHLCData(ohlcData);
             } catch (error) {
                 console.error("Error fetching coin overview:", error);
+                setFetchError(true);
             } finally {
                 setLoading(false);
             }
@@ -38,18 +39,19 @@ const CoinOverview = () => {
         fetchData();
     }, []);
 
-    if (loading || !coin || !coinOHLCData) {
-        return <CoinOverviewFallback />;
+    if (loading || fetchError || !coin || !coinOHLCData) {
+        return fetchError ? (
+            <div id="coin-overview-error">
+                <p>Failed to load coin data. Please try again later.</p>
+            </div>
+        ) : (
+            <CoinOverviewFallback />
+        );
     }
 
     return (
         <div id="coin-overview">
-            <CandlestickChart
-                data={coinOHLCData}
-                coinId="bitcoin"
-                liveInterval={liveInterval}
-                setLiveInterval={setLiveInterval}
-            >
+            <CandlestickChart data={coinOHLCData} coinId="bitcoin">
                 <div className="header pt-2">
                     <Image
                         src={coin.image.large}

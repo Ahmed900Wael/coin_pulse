@@ -17,7 +17,7 @@ const Categories = async () => {
             header: "Top Gainers",
             cellClassName: "top-gainers-cell",
             cell: (category) =>
-                category.top_3_coins.map((coin) => (
+                category.top_3_coins?.map((coin) => (
                     <Image
                         src={coin}
                         alt={coin}
@@ -25,7 +25,7 @@ const Categories = async () => {
                         width={28}
                         height={28}
                     />
-                )),
+                )) || [],
         },
         {
             header: "24h Change",
