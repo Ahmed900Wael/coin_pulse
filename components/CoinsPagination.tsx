@@ -12,11 +12,17 @@ import {
 import { buildPageNumbers, cn, ELLIPSIS } from "@/lib/utils";
 import { useRouter } from "next/navigation";
 
+interface CoinsPaginationProps {
+    currentPage: number;
+    totalPages: number;
+    hasMorePages: boolean;
+}
+
 const CoinsPagination = ({
     currentPage,
     totalPages,
     hasMorePages,
-}: Pagination) => {
+}: CoinsPaginationProps) => {
     const router = useRouter();
 
     const handlePageChange = (page: number) => {
@@ -35,7 +41,7 @@ const CoinsPagination = ({
                             currentPage > 1 && handlePageChange(currentPage - 1)
                         }
                         className={
-                            currentPage == 1
+                            currentPage === 1
                                 ? "control-disabled"
                                 : "control-button"
                         }
@@ -45,7 +51,7 @@ const CoinsPagination = ({
                     {pageNumbers.map((page, index) => (
                         <PaginationItem key={index}>
                             {page === ELLIPSIS ? (
-                                <span className="ellipsis">...</span>
+                                <PaginationEllipsis />
                             ) : (
                                 <PaginationLink
                                     onClick={() => handlePageChange(page)}
