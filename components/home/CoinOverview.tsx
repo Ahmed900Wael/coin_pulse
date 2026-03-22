@@ -14,6 +14,9 @@ const CoinOverview = () => {
     const [fetchError, setFetchError] = useState(false);
 
     useEffect(() => {
+        const controller = new AbortController();
+        const cancelled = controller.signal.aborted;
+
         const fetchData = async () => {
             try {
                 const [coinData, ohlcData] = await Promise.all([
@@ -26,17 +29,28 @@ const CoinOverview = () => {
                         precision: "full",
                     }),
                 ]);
-                setCoin(coinData);
-                setCoinOHLCData(ohlcData);
+
+                if (!cancelled) {
+                    setCoin(coinData);
+                    setCoinOHLCData(ohlcData);
+                }
             } catch (error) {
-                console.error("Error fetching coin overview:", error);
-                setFetchError(true);
+                if (!cancelled) {
+                    console.error("Error fetching coin overview:", error);
+                    setFetchError(true);
+                }
             } finally {
-                setLoading(false);
+                if (!cancelled) {
+                    setLoading(false);
+                }
             }
         };
 
         fetchData();
+
+        return () => {
+            controller.abort();
+        };
     }, []);
 
     if (loading || fetchError || !coin || !coinOHLCData) {

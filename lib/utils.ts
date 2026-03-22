@@ -106,7 +106,9 @@ export function convertOHLCData(data: OHLCData[]) {
     return data
 
         .map((d) => ({
-            time: d[0] as Time, // ensure seconds, not ms
+            time: (typeof d[0] === "number" && d[0] > 1e11
+                ? Math.floor(d[0] / 1000)
+                : d[0]) as Time, // ensure seconds, not ms
 
             open: d[1],
 
