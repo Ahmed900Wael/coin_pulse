@@ -55,3 +55,55 @@ export const TrendingCoinsFallback = () => {
         </div>
     );
 };
+
+const categoriesFallbackColumns: DataTableColumn<any>[] = [
+    {
+        header: <div className="h-4 bg-gray-300 rounded w-20 animate-pulse" />,
+        cell: () => (
+            <div className="h-4 bg-gray-300 rounded w-32 animate-pulse" />
+        ),
+    },
+    {
+        header: <div className="h-4 bg-gray-300 rounded w-24 animate-pulse" />,
+        cell: () => (
+            <div className="flex gap-1">
+                <div className="w-7 h-7 bg-gray-300 rounded-full animate-pulse"></div>
+                <div className="w-7 h-7 bg-gray-300 rounded-full animate-pulse"></div>
+                <div className="w-7 h-7 bg-gray-300 rounded-full animate-pulse"></div>
+            </div>
+        ),
+    },
+    {
+        header: <div className="h-4 bg-gray-300 rounded w-20 animate-pulse" />,
+        cell: () => (
+            <div className="h-4 bg-gray-300 rounded w-12 animate-pulse" />
+        ),
+    },
+    {
+        header: <div className="h-4 bg-gray-300 rounded w-20 animate-pulse" />,
+        cell: () => (
+            <div className="h-4 bg-gray-300 rounded w-16 animate-pulse" />
+        ),
+    },
+    {
+        header: <div className="h-4 bg-gray-300 rounded w-20 animate-pulse" />,
+        cell: () => (
+            <div className="h-4 bg-gray-300 rounded w-16 animate-pulse" />
+        ),
+    },
+];
+
+const categoriesFallbackData = Array(10).fill({});
+
+export const CategoriesFallback = () => {
+    return (
+        <div id="categories-fallback" className="custom-scrollbar">
+            <h4>Top Categories</h4>
+            <DataTable
+                columns={categoriesFallbackColumns}
+                data={categoriesFallbackData}
+                rowKey={(_, index) => index}
+            />
+        </div>
+    );
+};

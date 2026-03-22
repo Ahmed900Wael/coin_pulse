@@ -1,35 +1,71 @@
+"use client";
+
 import { fetcher } from "@/lib/coingecko.actions";
 import { formatCurrency } from "@/lib/utils";
 import Image from "next/image";
+import { useState, useEffect } from "react";
 import { CoinOverviewFallback } from "./fallback";
 import CandlestickChart from "../CandlestickChart";
 
-const CoinOverview = async () => {
-    let coin: CoinDetailsData | null = null;
-    let coinOHLCData: OHLCData[] | null = null;
+const CoinOverview = () => {
+    const [coin, setCoin] = useState<CoinDetailsData | null>(null);
+    const [coinOHLCData, setCoinOHLCData] = useState<OHLCData[] | null>(null);
+    const [loading, setLoading] = useState(true);
+    const [fetchError, setFetchError] = useState(false);
 
-    try {
-        [coin, coinOHLCData] = await Promise.all([
-            fetcher<CoinDetailsData>("/coins/bitcoin", {
-                dex_pair_format: "symbol",
-            }),
-            fetcher<OHLCData[]>("/coins/bitcoin/ohlc", {
-                vs_currency: "usd",
-                days: 1,
-                precision: "full",
-            }),
-        ]);
-    } catch (error) {
-        console.error("Error fetching coin overview:", error);
-        return <CoinOverviewFallback />;
+    useEffect(() => {
+        const controller = new AbortController();
+        const cancelled = controller.signal.aborted;
+
+        const fetchData = async () => {
+            try {
+                const [coinData, ohlcData] = await Promise.all([
+                    fetcher<CoinDetailsData>("/coins/bitcoin", {
+                        dex_pair_format: "symbol",
+                    }),
+                    fetcher<OHLCData[]>("/coins/bitcoin/ohlc", {
+                        vs_currency: "usd",
+                        days: 1,
+                        precision: "full",
+                    }),
+                ]);
+
+                if (!cancelled) {
+                    setCoin(coinData);
+                    setCoinOHLCData(ohlcData);
+                }
+            } catch (error) {
+                if (!cancelled) {
+                    console.error("Error fetching coin overview:", error);
+                    setFetchError(true);
+                }
+            } finally {
+                if (!cancelled) {
+                    setLoading(false);
+                }
+            }
+        };
+
+        fetchData();
+
+        return () => {
+            controller.abort();
+        };
+    }, []);
+
+    if (loading || fetchError || !coin || !coinOHLCData) {
+        return fetchError ? (
+            <div id="coin-overview-error">
+                <p>Failed to load coin data. Please try again later.</p>
+            </div>
+        ) : (
+            <CoinOverviewFallback />
+        );
     }
 
     return (
         <div id="coin-overview">
-            <CandlestickChart
-                data={coinOHLCData}
-                coinId="bitcoin"
-            >
+            <CandlestickChart data={coinOHLCData} coinId="bitcoin">
                 <div className="header pt-2">
                     <Image
                         src={coin.image.large}
